@@ -100,11 +100,120 @@ summary(simple_model)
 plot(df$room_num, df$price)
 abline(simple_model)
 
+str(df)
 
+# ---------------------------- Multiple Regression Model --------------------------------------------------------------------
 
+multiple_model = lm(price~., data = df) 
+summary(multiple_model)
 
+# ------------------------------- Test- Train split -----------------------------------------------------------
 
+# to split data into test & train using a package caTools
+install.packages("caTools")
 
+# set.seed is used to observe random generators within our observation if that is equal to zero we get specific sequence always
+
+set.seed(0)
+split = sample.split(df, SplitRatio = 0.8)
+
+# we have a variable named split with FALSE & TRUE we will assign TRUE to Train_set & FALSE..
+# to test_set because we gave SplitRatio as 0.8 so all under 0.8 will be TRUE and vice versa
+
+# THE SUBSET OF DF HAVING SPLIT AS TRUE MOVE TO TRAINING SET VARIABLE
+training_set = subset(df, split == TRUE)
+test_set = subset(df, split == FALSE)
+
+lm_a = lm(price~., data = training_set)
+summary(lm_a) # for reference
+
+# we will find out the Mean Squared Error of training_set & train_set
+
+train_a = predict(lm_a, training_set) # this will take all independent variable from training_set put it in lm_a and predict and store in train_a.
+test_a = predict(lm_a, test_set)
+
+# mean squared error (MSE) = [y(original) - y(predicted)]^2
+
+mean((training_set$price - train_a)^2)
+mean((test_set$price - test_a)^2)
+
+# This estimated error is used when comparing models for better performance.
+
+# Subset selection to improve prediction accuracy and model interpretability.
+install.packages("leaps")
+
+lm_best = regsubsets(price~., data = df, nvmax = 15)
+summary(lm_best) # shows us all models of best subset
+# to compare and get the best adj r2 model:
+summary(lm_best)$adjr2
+
+which.max(summary(lm_best)$adjr2)
+coef(lm_best, 7)
+
+# now to run forward sub-selection
+
+lm_forward = regsubsets(price~., data = df, nvmax = 15, method = "forward")
+summary(lm_forward)
+summary(lm_forward)$adjr2
+which.max(summary(lm_forward)$adjr2)
+coef(lm_forward, 7)
+
+#now to run backward sub-selection
+
+lm_backward = regsubsets(price~., data = df, nvmax = 15, method = "backward")
+summary(lm_backward)
+
+summary(lm_backward)$adjr2
+which.max(summary(lm_backward)$adjr2)
+coef(lm_backward, 7)
+
+# ridge and lasso shrinkage method
+# for ridge regression package is glmnet
+install.packages("glmnet")
+
+# for ridge regression segregate variable into dependent & independent variables
+x = model.matrix(price~., data = df)[,-1] # for independent
+y = df$price # for dependent variable
+
+grid = 10^seq(10,-2,length = 100) # for lambda values
+grid
+
+lm_r = glmnet(x,y,alpha = 0, lambda = grid) # alpha =0 for Ridge & 1 for Lasso
+summary(lm_r)
+
+cv_fit = cv.glmnet(x,y,alpha = 0, lambda = grid) # here cv is cross validation to get best lambda value
+plot(cv_fit)
+# we want least MSE to get optimum value of lambda 
+
+opt_lambda = cv_fit$lambda.min
+# for finding r2 we need to find total sum of square (TSS)
+
+tss = sum((y - mean(y))^2)
+# now to find residual sum of square(RSS) we need predicted values of y
+y_a = predict(lm_r, s = opt_lambda, newx = x)
+
+rss = sum((y_a - y)^2)
+ # --------------------------IMP R2 = (TSS - RSS)/TSS ----------------------
+rsq = 1 - rss/tss # can be used to compare with other models
+
+# now we do Lasso regression which is similiar to ridge
+
+lm_l = glmnet(x,y,alpha = 1, lambda = grid) # alpha =0 for Ridge & 1 for Lasso
+summary(lm_l)
+
+cv_fitl = cv.glmnet(x,y,alpha = 1, lambda = grid) # here cv is cross validation to get best lambda value
+plot(cv_fitl)
+# we want least MSE to get optimum value of lambda 
+
+op_lambda = cv_fitl$lambda.min
+# for finding r2 we need to find total sum of square (TSS)
+
+tss1 = sum((y - mean(y))^2)
+# now to find residual sum of square(RSS) we need predicted values of y
+y_a1 = predict(lm_l, s = op_lambda, newx = x)
+
+rss1 = sum((y_a1 - y)^2)
+rsq1 = 1 - rss1/tss
 
 
 
